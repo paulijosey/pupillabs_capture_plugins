@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/09/24 11:52:09 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/09/26 14:50:48 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/03 13:03:22 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -24,10 +24,14 @@ import pathlib
 import seaborn as sns
 import matplotlib.colors as mcolors
 
+# pupil
 from plugin import Plugin
 from pyglui import ui
 from pyglui.cygl.utils import RGBA, draw_circle, draw_rounded_rect
 from pyglui.pyfontstash import fontstash
+
+# custom
+from event_handler import event_handler
 
 # logging
 import logging
@@ -49,15 +53,15 @@ class Object_Detection(Plugin):
     #   |___|_| |_|_|\__| 
     def __init__(self, g_pool):
         super().__init__(g_pool)
+        self.eventHandler = EventHandler()
         self.init_pupil()
         self.init_yolo()
-
 
     def init_pupil(self) -> None:
         """
         Initialize the Pupil Labs related settings.
         """
-         # order (0-1) determines if your plugin should run before other plugins or after
+        # order (0-1) determines if your plugin should run before other plugins or after
         # gcvlc player uses high order since it relies on calculated gaze points
         self.order = .7
     
@@ -73,7 +77,11 @@ class Object_Detection(Plugin):
     #   | |_) | | | | |/ _` | | '_ \  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
     #   |  __/| | |_| | (_| | | | | | |  _|| |_| | | | | (__| |_| | (_) | | | \__ \
     #   |_|   |_|\__,_|\__, |_|_| |_| |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
-    #                  |___/                                                       
+    #                  |___/                                                   
+    # 
+    # Following are functions that are inherited by the Plugin class. Calling those 
+    # functions is already handled by PubilLabs. For more information and more 
+    # available functions check the pupil_src/shared_modules/plugin.py file.    
     def init_ui(self) -> None:
         """
         Init the user interface including text and settings buttons.
@@ -117,11 +125,11 @@ class Object_Detection(Plugin):
         """
 
         # get the frame(aka world camera data) from the events
-        frame = self.get_frame(events)
+        frame = self.event_handler.get_frame(events)
         self.object_detection(frame)
 
         # TODO: use gaze data
-        gaze = self.get_gaze(events)
+        gaze = self.event_handler.get_gaze(events)
 
  
     def gl_display(self):
@@ -135,6 +143,36 @@ class Object_Detection(Plugin):
 
         fs = self.g_pool.capture.frame_size  # frame height
         # get object detection results
+        self.visualize_objects()
+ 
+    #     ____          _                    _____                 _   _                     
+    #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___     
+    #   | |  | | | / __| __/ _ \| '_ ` _ \  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|    
+    #   | |__| |_| \__ \ || (_) | | | | | | |  _|| |_| | | | | (__| |_| | (_) | | | \__ \    
+    #    \____\__,_|___/\__\___/|_| |_| |_| |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/    
+    def object_detection(self, image: np.array) -> None:
+        """
+        Perform object detection on a scene camera image using YOLOv8. Taken and modified 
+        from: https://docs.ultralytics.com/modes/predict/#key-features-of-predict-mode
+        TODO: return the detected objects and their coordinates in a appropriate format
+        """
+        # Run batched inference on a list of images
+        self.recent_objects = self.model(image, verbose=False, stream=True)  # return a list of Results objects
+        # TODO: add ROS publisher
+
+    #     ____          _                   __     ___                 _ _          _   _             
+    #    / ___|   _ ___| |_ ___  _ __ ___   \ \   / (_)___ _   _  __ _| (_)______ _| |_(_) ___  _ __  
+    #   | |  | | | / __| __/ _ \| '_ ` _ \   \ \ / /| / __| | | |/ _` | | |_  / _` | __| |/ _ \| '_ \ 
+    #   | |__| |_| \__ \ || (_) | | | | | |   \ V / | \__ \ |_| | (_| | | |/ / (_| | |_| | (_) | | | |
+    #    \____\__,_|___/\__\___/|_| |_| |_|    \_/  |_|___/\__,_|\__,_|_|_/___\__,_|\__|_|\___/|_| |_|
+    def visualize_objects(self) -> None:
+        """
+        Mark objects of the same class is the same colors and overlay image
+        with bounding boxes in those colors. Additionally add the class and 
+        confidence in the top left corner.
+
+        This function should be called in pupillabs "gl_display" method.
+        """
         if self.recent_objects is not None:
             # Process results list
             for obj in self.recent_objects:
@@ -152,51 +190,3 @@ class Object_Detection(Plugin):
                     draw_rounded_rect(top_left, wh, 2.0, RGBA(color[0], color[1], color[2], 0.5))
                     # draw object label
                     self.glfont.draw_text(top_left[0], top_left[1], str(cls_dict[box.cls[0].item()]) + " (" + str(box.conf[0].item()) + ")" )
-                # masks = obj.masks  # Masks object for segmentation masks outputs
-                # keypoints = obj.keypoints  # Keypoints object for pose outputs
-                # probs = obj.probs  # Probs object for classification outputs
-                # obb = obj.obb  # Oriented boxes object for OBB outputs
-                
-
-
- 
-    #    _____                 _     _   _                 _ _               
-    #   | ____|_   _____ _ __ | |_  | | | | __ _ _ __   __| | | ___ _ __ ___ 
-    #   |  _| \ \ / / _ \ '_ \| __| | |_| |/ _` | '_ \ / _` | |/ _ \ '__/ __|
-    #   | |___ \ V /  __/ | | | |_  |  _  | (_| | | | | (_| | |  __/ |  \__ \
-    #   |_____| \_/ \___|_| |_|\__| |_| |_|\__,_|_| |_|\__,_|_|\___|_|  |___/
-    def get_frame(self, events) -> np.array:
-        """
-        Return the frame from the scene camera.
-        """
-        frame = events.get("frame")
-        if not frame:
-            return
-        return frame.img                                                                          
-
-    def get_gaze(self, events) -> np.array:
-        """
-        Return the gaze data.
-        """
-        gaze = events.get("gaze")
-        if not gaze:
-            return
-        gaze = (
-            gp for gp in gaze if gp["confidence"] >= self.g_pool.min_data_confidence
-        )
-        return gaze
- 
-    #     ____          _                    _____                 _   _                     
-    #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___     
-    #   | |  | | | / __| __/ _ \| '_ ` _ \  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|    
-    #   | |__| |_| \__ \ || (_) | | | | | | |  _|| |_| | | | | (__| |_| | (_) | | | \__ \    
-    #    \____\__,_|___/\__\___/|_| |_| |_| |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/    
-    def object_detection(self, image: np) -> None:
-        """
-        Perform object detection on a scene camera image using YOLOv8. Taken and modified 
-        from: https://docs.ultralytics.com/modes/predict/#key-features-of-predict-mode
-        TODO: return the detected objects and their coordinates in a appropriate format
-        """
-        # Run batched inference on a list of images
-        self.recent_objects = self.model(image, verbose=False, stream=True)  # return a list of Results objects
-
