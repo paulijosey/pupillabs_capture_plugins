@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/09/24 11:52:09 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/03 13:03:22 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/04 12:32:52 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -31,7 +31,7 @@ from pyglui.cygl.utils import RGBA, draw_circle, draw_rounded_rect
 from pyglui.pyfontstash import fontstash
 
 # custom
-from event_handler import event_handler
+from event_handler.event_handler import EventHandler
 
 # logging
 import logging
@@ -53,7 +53,7 @@ class Object_Detection(Plugin):
     #   |___|_| |_|_|\__| 
     def __init__(self, g_pool):
         super().__init__(g_pool)
-        self.eventHandler = EventHandler()
+        self.event_handler = EventHandler()
         self.init_pupil()
         self.init_yolo()
 
@@ -129,7 +129,7 @@ class Object_Detection(Plugin):
         self.object_detection(frame)
 
         # TODO: use gaze data
-        gaze = self.event_handler.get_gaze(events)
+        gaze = self.event_handler.get_highest_conf_gaze(events)
 
  
     def gl_display(self):

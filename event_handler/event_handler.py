@@ -6,11 +6,14 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 11:01:55 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/03 13:03:38 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/04 12:38:19 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
 import numpy as np
+
+# pulillabs imports (in sharted_modules)
+from methods import denormalize
 
 class EventHandler():
 
@@ -20,6 +23,7 @@ class EventHandler():
     #    | || | | | | |_ 
     #   |___|_| |_|_|\__|
     def __init__(self):
+        self.frame_size = None # needed to denormalize gaze position
         pass
 
     #    _____                 _     _   _                 _ _               
@@ -35,18 +39,35 @@ class EventHandler():
         frame = events.get("frame")
         if not frame:
             return
+        self.frame_size = frame.img.shape[:-1][::-1]
         return frame.img                                                                          
 
-    def get_gaze(self, events) -> np.array:
+    def get_highest_conf_gaze(self, events) -> np.array:
         """
-        Return the gaze data.
+        Return the gaze data with highest confidence.
         For information on the events data type contact pupillabs ...
         """
         gaze = events.get("gaze")
+
+        # check abort conditions
         if not gaze:
             return
-        gaze = (
-            gp for gp in gaze if gp["confidence"] >= self.g_pool.min_data_confidence
-        )
+
+        if self.frame_size is None:
+            print("Frame size not set")
+            return
+
+        # Gaze data is a list of possible gaze positions.
+        # We are currently only interested in the gaze with the highest confidence.
+
+        # find highest confidence
+        gaze = sorted(gaze, key=lambda x: x["confidence"], reverse=True)
+
+        # get gaze with highest confidence
+        gaze = gaze[0]
+
+        # add denormalized gaze position
+        gaze['denorm_pos'] = denormalize(gaze['norm_pos'], self.frame_size, flip_y=True)
+        gaze['frame_size'] = self.frame_size
+
         return gaze
- 

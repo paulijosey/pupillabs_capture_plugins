@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 10:48:51 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/03 14:38:47 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/04 12:44:02 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -71,8 +71,6 @@ class ROS_Publisher_Pugin(Plugin):
         rclpy.init()
         # init seperate class for ROS stuff
         self.ros_node = PupilRosNode()
-        # classic ros node spin up 
-        # rclpy.spin(self.ros_node)
 
     #    ____  _             _         _____                 _   _                 
     #   |  _ \| |_   _  __ _(_)_ __   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
@@ -122,9 +120,51 @@ class ROS_Publisher_Pugin(Plugin):
 
         # get the frame(aka world camera data) from the events
         frame   = self.event_handler.get_frame(events)
-        gaze    = self.event_handler.get_gaze(events)
-        # imu     = self.event_handler.get_imu(events)
+        self.publish_frame(frame)
+        # get the gaze data from the events
+        gaze    = self.event_handler.get_highest_conf_gaze(events)
+        self.publish_gaze(gaze)
+        # get the imu data from the events
+        # imu     = self.event_handler.get_imu(events) TODO: implement
+        # self.publish_imu(imu)
 
+ 
+    #     ____          _                    _____                 _   _                 
+    #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
+    #   | |  | | | / __| __/ _ \| '_ ` _ \  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
+    #   | |__| |_| \__ \ || (_) | | | | | | |  _|| |_| | | | | (__| |_| | (_) | | | \__ \
+    #    \____\__,_|___/\__\___/|_| |_| |_| |_|   \__,_|_| |_|\___|\__|_|\___/|_| |_|___/
+    def publish_frame(self, frame) -> None:
+        """
+        Publish the frame data to the ROS2 topic.
+        """
+        if frame is None:
+            print("No frame data available.")
+            return
+        #   convert the frame to ROS2 Image
+        frame_msg = self.ros_node.cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+        #   publish the frame
+        self.ros_node.pub.frame.image.publish(frame_msg)
+    
+    def publish_gaze(self, gaze) -> None:
+        """
+        Publish the gaze data to the ROS2 topic.
+        """
+        # check if gaze data is available
+        if not gaze:
+            print("No gaze data available.")
+            return
+        #   convert the frame to ROS2 Image
+        gaze_msg = GazeStamped()
+        gaze_msg.header.stamp = self.ros_node.get_clock().now().to_msg()
+        gaze_msg.header.frame_id = 'gaze'
+        gaze_msg.gaze.x = gaze['denorm_pos'][0] # TODO: check if this is correct
+        gaze_msg.gaze.y = gaze['denorm_pos'][1] # TODO: check if this is correct
+        gaze_msg.image_size.width  = gaze['frame_size'][0]
+        gaze_msg.image_size.height = gaze['frame_size'][1]
+
+        #   publish the frame
+        self.ros_node.pub.gaze.publish(gaze_msg)
 
 #    ____   ___  ____    _   _           _      
 #   |  _ \ / _ \/ ___|  | \ | | ___   __| | ___ 
