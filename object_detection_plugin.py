@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/09/24 11:52:09 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/04 12:32:52 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/09 09:54:29 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -55,7 +55,9 @@ class Object_Detection(Plugin):
         super().__init__(g_pool)
         self.event_handler = EventHandler()
         self.init_pupil()
-        self.init_yolo()
+        self.init_object_detection()
+
+        self.visualize_objects_bool = True
 
     def init_pupil(self) -> None:
         """
@@ -65,11 +67,13 @@ class Object_Detection(Plugin):
         # gcvlc player uses high order since it relies on calculated gaze points
         self.order = .7
     
-    def init_yolo(self) -> None:
+    def init_object_detection(self, yolo_version="yolo11n") -> None:
         """
-        Initialize the YOLOv8 model.
+        Initialize the object detection model.
         """
-        self.model = YOLO("yolov8n.pt")  # pretrained YOLOv8n model
+        self.yolo_version = yolo_version
+        self.yolo_path = pathlib.Path(__file__).parent / "object_detection_models" / self.yolo_version
+        self.model = YOLO(self.yolo_path)  # pretrained YOLO model
         self.recent_objects = None
 
     #    ____  _             _         _____                 _   _                 
@@ -98,6 +102,37 @@ class Object_Detection(Plugin):
             # add info text
             self.menu.append(ui.Info_Text('This plugin adds object detection to the scene camera.'))
             
+
+            # add a sub menu  
+            self.__sub_menu = ui.Growing_Menu('Settings')
+            self.menu.append(self.__sub_menu)
+
+            # Model 
+            self.__sub_menu.append(ui.Info_Text('Change the Uses Model'))
+            # add a text input to the sub menu
+            self.__sub_menu.append(
+                ui.Text_Input(
+                    "yolo_version", 
+                    self, 
+                    label="Yolo Version", 
+                    setter=self.init_object_detection
+                )
+            )
+
+            # selct topics to publish
+            self.__sub_menu.append(ui.Info_Text('Toggle Visualization'))
+            # use the checkbox to select the topics
+            #   Those switches will flip the bool value of the vaiable (first value passed
+            #   .... as a string .... don't ask me why they did it like this).
+            #   So "self.__first_passed_value" will be affected.
+            self.__sub_menu.append(
+                ui.Switch(
+                    'visualize_objects_bool', 
+                    self, 
+                    label='Visualize Objects',
+                )
+            )
+
             self.glfont = fontstash.Context()
             self.glfont.add_font("opensans", ui.get_opensans_font_path())
             self.glfont.set_size(22)
@@ -142,8 +177,9 @@ class Object_Detection(Plugin):
         """
 
         fs = self.g_pool.capture.frame_size  # frame height
-        # get object detection results
-        self.visualize_objects()
+        if self.visualize_objects_bool:
+            # draw the detected objects
+            self.visualize_objects()
  
     #     ____          _                    _____                 _   _                     
     #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___     
@@ -158,8 +194,8 @@ class Object_Detection(Plugin):
         """
         # Run batched inference on a list of images
         self.recent_objects = self.model(image, verbose=False, stream=True)  # return a list of Results objects
-        # TODO: add ROS publisher
-
+        # sent as events to the plugin manager
+    
     #     ____          _                   __     ___                 _ _          _   _             
     #    / ___|   _ ___| |_ ___  _ __ ___   \ \   / (_)___ _   _  __ _| (_)______ _| |_(_) ___  _ __  
     #   | |  | | | / __| __/ _ \| '_ ` _ \   \ \ / /| / __| | | |/ _` | | |_  / _` | __| |/ _ \| '_ \ 

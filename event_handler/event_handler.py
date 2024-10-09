@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 11:01:55 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/04 12:38:19 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/08 07:46:50 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -71,3 +71,33 @@ class EventHandler():
         gaze['frame_size'] = self.frame_size
 
         return gaze
+
+    def get_imu(self, events) -> np.array:
+        """
+        Return the data from the IMU. 
+        For information on the events data type contact pupillabs ...
+        """
+        imu = events.get("imu")
+        if not imu:
+            print("No imu data available.")
+            return
+        print(imu)
+        return imu
+
+    #    ____  _        _               ___        __                                                                          
+    #   / ___|| |_ __ _| |_ _   _ ___  |_ _|_ __  / _| ___                                                                     
+    #   \___ \| __/ _` | __| | | / __|  | || '_ \| |_ / _ \                                                                    
+    #    ___) | || (_| | |_| |_| \__ \  | || | | |  _| (_) |                                                                   
+    #   |____/ \__\__,_|\__|\__,_|___/ |___|_| |_|_|  \___/                                                                    
+    def list_events(self, events) -> None:
+        """
+        List all events in the events data type.
+        For information on the events data type contact pupillabs ...
+        """
+        print("---------- Events: ----------")
+        for key, value in events.items():
+            print(key)
+        print("----------------------------")
+        return
+                                                                                                                             
+ 
