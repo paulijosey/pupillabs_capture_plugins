@@ -5,7 +5,7 @@ A working Pupil software. Recomended to get the dockerized setup:
 https://github.com/paulijosey/pupil
 
 ## Setup
-Clone me into your pupil/capture_settings folder. If it does not exist create it.
+Clone me into your pupil/capture_settings/plugins folder. If it does not exist create it.
 
 ## Development
 This repository consists of two different plugins:
