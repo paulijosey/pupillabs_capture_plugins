@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 10:48:51 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/09 08:37:24 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/09 09:11:44 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -58,7 +58,7 @@ class ROS_Publisher_Pugin(Plugin):
         """
         # order (0-1) determines if your plugin should run before other plugins or after
         # gcvlc player uses high order since it relies on calculated gaze points
-        self.order = .7
+        self.order = .5
 
         # custom made class, but still belongs to pupil stuff
         # (handles incoming pupil events)
@@ -72,6 +72,12 @@ class ROS_Publisher_Pugin(Plugin):
         # init seperate class for ROS stuff
         self.node_name = 'PupilRosNode'
         self.ros_node = PupilRosNode(self.node_name)
+
+        # settings
+        self.publish_frame_bool = True
+        self.publish_gaze_bool = True
+        self.publish_imu_bool = False
+        self.publish_objects_bool = False
 
     #    ____  _             _         _____                 _   _                 
     #   |  _ \| |_   _  __ _(_)_ __   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
@@ -99,6 +105,8 @@ class ROS_Publisher_Pugin(Plugin):
             
             # add a sub menu  
             self.__sub_menu = ui.Growing_Menu('Settings')
+            # Node Name 
+            self.__sub_menu.append(ui.Info_Text('Change the name of the ROS2 Node.'))
             self.menu.append(self.__sub_menu)
             # add a text input to the sub menu
             self.__sub_menu.append(
@@ -110,6 +118,40 @@ class ROS_Publisher_Pugin(Plugin):
                 )
             )
 
+            # selct topics to publish
+            self.__sub_menu.append(ui.Info_Text('Select the topics to publish.'))
+            # use the checkbox to select the topics
+            #   Those switches will flip the bool value of the vaiable (first value passed
+            #   .... as a string .... don't ask me why they did it like this).
+            #   So "self.__first_passed_value" will be affected.
+            self.__sub_menu.append(
+                ui.Switch(
+                    'publish_frame_bool', 
+                    self, 
+                    label='Frame Image',
+                )
+            )
+            self.__sub_menu.append(
+                ui.Switch(
+                    'publish_gaze_bool', 
+                    self, 
+                    label='Gaze',
+                )
+            )
+            self.__sub_menu.append(
+                ui.Switch(
+                    'publish_imu_bool', 
+                    self, 
+                    label='IMU (Not implemented)',
+                )
+            )
+            self.__sub_menu.append(
+                ui.Switch(
+                    'publish_objects_bool', 
+                    self, 
+                    label='Objects (Not implemented)',
+                )
+            )
 
             self.set_ui_font()
         except:
@@ -134,16 +176,21 @@ class ROS_Publisher_Pugin(Plugin):
         --> does not need to be called explicitly)
         """
 
-        # get the frame(aka world camera data) from the events
-        frame   = self.event_handler.get_frame(events)
-        self.publish_frame(frame)
-        # get the gaze data from the events
-        gaze    = self.event_handler.get_highest_conf_gaze(events)
-        self.publish_gaze(gaze)
-        # get the imu data from the events
-        # imu     = self.event_handler.get_imu(events)
-        # self.publish_imu(imu)
+        if self.publish_frame_bool:
+            # get the frame(aka world camera data) from the events
+            frame = self.event_handler.get_frame(events)
+            self.publish_frame(frame)
 
+        if self.publish_gaze_bool:
+            # get the gaze data from the events
+            gaze = self.event_handler.get_highest_conf_gaze(events)
+            self.publish_gaze(gaze)
+
+        if self.publish_imu_bool:
+            print("IMU publishing is not implemented yet.")
+            # get the imu data from the events
+            # imu = self.event_handler.get_imu(events)
+            # self.publish_imu(imu)
  
     #     ____          _                    _____                 _   _                 
     #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
