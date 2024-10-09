@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 10:48:51 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/04 12:44:02 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/09 08:37:24 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -70,7 +70,8 @@ class ROS_Publisher_Pugin(Plugin):
         """
         rclpy.init()
         # init seperate class for ROS stuff
-        self.ros_node = PupilRosNode()
+        self.node_name = 'PupilRosNode'
+        self.ros_node = PupilRosNode(self.node_name)
 
     #    ____  _             _         _____                 _   _                 
     #   |  _ \| |_   _  __ _(_)_ __   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
@@ -86,6 +87,8 @@ class ROS_Publisher_Pugin(Plugin):
         --> see plugin.py
         --> does not need to be called explicitly)
         """
+        self.__sub_menu = None
+
         try:
             # lets make a menu entry in the sidebar
             self.add_menu()
@@ -93,13 +96,26 @@ class ROS_Publisher_Pugin(Plugin):
             self.menu.label = 'ROS Translation'
             # add info text
             self.menu.append(ui.Info_Text('This plugin publishes data in form of ROS2 Topics.'))
-            self.glfont = fontstash.Context()
-            self.glfont.add_font("opensans", ui.get_opensans_font_path())
-            self.glfont.set_size(22)
-            self.glfont.set_color_float((0.2, 0.5, 0.9, 1.0))
+            
+            # add a sub menu  
+            self.__sub_menu = ui.Growing_Menu('Settings')
+            self.menu.append(self.__sub_menu)
+            # add a text input to the sub menu
+            self.__sub_menu.append(
+                ui.Text_Input(
+                    "node_name", 
+                    self, 
+                    label="Node Name", 
+                    setter=self.restart_ros_node
+                )
+            )
+
+
+            self.set_ui_font()
         except:
             logger.error("Unexpected error: {}".format(sys.exc_info()))
-        
+
+            
     def deinit_ui(self) -> None:
         """
         (This is a function given by the Plugin class 
@@ -125,7 +141,7 @@ class ROS_Publisher_Pugin(Plugin):
         gaze    = self.event_handler.get_highest_conf_gaze(events)
         self.publish_gaze(gaze)
         # get the imu data from the events
-        # imu     = self.event_handler.get_imu(events) TODO: implement
+        # imu     = self.event_handler.get_imu(events)
         # self.publish_imu(imu)
 
  
@@ -166,6 +182,21 @@ class ROS_Publisher_Pugin(Plugin):
         #   publish the frame
         self.ros_node.pub.gaze.publish(gaze_msg)
 
+    def restart_ros_node(self, node_name) -> None:
+        """
+        Restart the ROS2 Node with the new name.
+        """
+        self.node_name = node_name
+        self.ros_node.destroy_node()
+        self.ros_node = PupilRosNode(self.node_name)
+
+    def set_ui_font(self):
+        self.glfont = fontstash.Context()
+        self.glfont.add_font("opensans", ui.get_opensans_font_path())
+        self.glfont.set_size(22)
+        self.glfont.set_color_float((0.2, 0.5, 0.9, 1.0))
+
+
 #    ____   ___  ____    _   _           _      
 #   |  _ \ / _ \/ ___|  | \ | | ___   __| | ___ 
 #   | |_) | | | \___ \  |  \| |/ _ \ / _` |/ _ \
@@ -177,8 +208,8 @@ class PupilRosNode(Node):
     #    | || '_ \| | __|
     #    | || | | | | |_ 
     #   |___|_| |_|_|\__|
-    def __init__(self): 
-        self.node_name = 'PupilRosNode'
+    def __init__(self, node_name): 
+        self.node_name = node_name
         super().__init__(self.node_name)
         self.init_publishers()
 
