@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 11:01:55 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/08 07:46:50 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/17 14:12:31 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -42,6 +42,19 @@ class EventHandler():
         self.frame_size = frame.img.shape[:-1][::-1]
         return frame.img                                                                          
 
+    def get_depth_frame(self, events) -> np.array:
+        """
+        Return the frame from the depth camera.
+        Only applicable if a depth camera is connected, enabled and
+        sends data on the "depth_frame" event channel.
+        For information on the events data type contact pupillabs ...
+        """
+        depth_frame = events.get("depth_frame")
+        if not depth_frame:
+            return
+        self.frame_size = depth_frame.img.shape[:-1][::-1]
+        return depth_frame.img                                                                          
+
     def get_highest_conf_gaze(self, events) -> np.array:
         """
         Return the gaze data with highest confidence.
@@ -76,6 +89,8 @@ class EventHandler():
         """
         Return the data from the IMU. 
         For information on the events data type contact pupillabs ...
+        TODO: figure out how to get IMU data ... officially not supported
+                by PupilLabs lads.
         """
         imu = events.get("imu")
         if not imu:
