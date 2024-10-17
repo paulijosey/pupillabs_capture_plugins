@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 10:48:51 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/09 09:11:44 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/17 12:06:49 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -191,7 +191,14 @@ class ROS_Publisher_Pugin(Plugin):
             # get the imu data from the events
             # imu = self.event_handler.get_imu(events)
             # self.publish_imu(imu)
- 
+    
+    def cleanup(self) -> None:
+        """
+        Cleanup the ROS2 Node and shutdown the ROS2 environment.
+        """
+        self.ros_node.destroy_node()
+        rclpy.shutdown()
+
     #     ____          _                    _____                 _   _                 
     #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
     #   | |  | | | / __| __/ _ \| '_ ` _ \  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
