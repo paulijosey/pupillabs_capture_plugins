@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-TIMEOUT = 500  # ms FIXME
+TIMEOUT = 1000  # ms FIXME
 DEFAULT_COLOR_SIZE = (1280, 720)
 DEFAULT_COLOR_FPS = 30
 DEFAULT_DEPTH_SIZE = (640, 480)
@@ -225,9 +225,6 @@ class Realsense2_Source(Old_Base_Source):
         **kwargs
     ):
         super().__init__(g_pool, **kwargs)
-
-        self.rs_pre_init()
-
         self._intrinsics = None
         self.color_frame_index = 0
         self.depth_frame_index = 0
@@ -242,7 +239,6 @@ class Realsense2_Source(Old_Base_Source):
         self.depth_frame_size_backup = DEFAULT_DEPTH_SIZE
         self.frame_rate_backup = DEFAULT_COLOR_FPS
         self.depth_frame_rate_backup = DEFAULT_DEPTH_FPS
-
         self._initialize_device(
             device_id,
             frame_size,
@@ -252,19 +248,6 @@ class Realsense2_Source(Old_Base_Source):
             device_options,
         )
         logger.debug("_init_ completed")
-
-    def rs_pre_init(self):
-        pipe = rs.pipeline()
-        profile = pipe.start()
-        print(profile)
-        try:  
-            for i in range(30):
-                frames = pipe.wait_for_frames()
-                for f in frames:
-                    print(f)
-        finally:
-            pipe.stop()
-
 
     def _initialize_device(
         self,
