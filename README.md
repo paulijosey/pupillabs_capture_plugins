@@ -1,6 +1,6 @@
 # pupillabs_capture_plugins
 
-## Dependecies
+## Dependencies
 A working Pupil software. Recommended to get the dockerized setup:
 https://github.com/paulijosey/pupil
 
