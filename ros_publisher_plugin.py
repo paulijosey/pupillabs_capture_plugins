@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 10:48:51 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/09 09:11:44 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/10/17 14:17:51 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -75,6 +75,7 @@ class ROS_Publisher_Pugin(Plugin):
 
         # settings
         self.publish_frame_bool = True
+        self.publish_depth_frame_bool = True
         self.publish_gaze_bool = True
         self.publish_imu_bool = False
         self.publish_objects_bool = False
@@ -133,6 +134,13 @@ class ROS_Publisher_Pugin(Plugin):
             )
             self.__sub_menu.append(
                 ui.Switch(
+                    'publish_depth_frame_bool', 
+                    self, 
+                    label='Depth Image',
+                )
+            )
+            self.__sub_menu.append(
+                ui.Switch(
                     'publish_gaze_bool', 
                     self, 
                     label='Gaze',
@@ -181,6 +189,11 @@ class ROS_Publisher_Pugin(Plugin):
             frame = self.event_handler.get_frame(events)
             self.publish_frame(frame)
 
+        if self.publish_depth_frame_bool:
+            # get the frame(aka world camera data) from the events
+            depth_frame = self.event_handler.get_depth_frame(events)
+            self.publish_depth_frame(depth_frame)
+
         if self.publish_gaze_bool:
             # get the gaze data from the events
             gaze = self.event_handler.get_highest_conf_gaze(events)
@@ -191,7 +204,15 @@ class ROS_Publisher_Pugin(Plugin):
             # get the imu data from the events
             # imu = self.event_handler.get_imu(events)
             # self.publish_imu(imu)
- 
+        
+    
+    def cleanup(self) -> None:
+        """
+        Cleanup the ROS2 Node and shutdown the ROS2 environment.
+        """
+        self.ros_node.destroy_node()
+        rclpy.shutdown()
+
     #     ____          _                    _____                 _   _                 
     #    / ___|   _ ___| |_ ___  _ __ ___   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
     #   | |  | | | / __| __/ _ \| '_ ` _ \  | |_ | | | | '_ \ / __| __| |/ _ \| '_ \/ __|
@@ -208,6 +229,18 @@ class ROS_Publisher_Pugin(Plugin):
         frame_msg = self.ros_node.cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
         #   publish the frame
         self.ros_node.pub.frame.image.publish(frame_msg)
+
+    def publish_depth_frame(self, depth_frame) -> None:
+        """
+        Publish the frame data to the ROS2 topic.
+        """
+        if depth_frame is None:
+            print("No depth_frame data available.")
+            return
+        #   convert the frame to ROS2 Image
+        depth_frame_msg = self.ros_node.cv_bridge.cv2_to_imgmsg(depth_frame, encoding='bgr8')
+        #   publish the frame
+        self.ros_node.pub.frame.depth_image.publish(depth_frame_msg)
     
     def publish_gaze(self, gaze) -> None:
         """
@@ -272,6 +305,8 @@ class PupilRosNode(Node):
         self.cv_bridge = CvBridge()
         #   publisher for pretty pictures
         self.pub.frame.image = self.create_publisher(Image, self.node_name + '/frame/image', 10)
+        #   publisher for depth images
+        self.pub.frame.depth_image = self.create_publisher(Image, self.node_name + '/frame/depth_image', 10)
         #   publisher for the camera info
         self.pub.frame.info = self.create_publisher(CameraInfo, self.node_name + '/frame/info', 10)
         #   publisher for the gaze data
@@ -288,4 +323,5 @@ class RosPublishers():
 class RosCameraPublisher():
     def __init__(self):
         self.image      = None
+        self.depth_image= None
         self.info       = None
