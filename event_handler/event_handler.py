@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 11:01:55 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/17 14:12:31 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/11/19 10:46:33 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -52,7 +52,7 @@ class EventHandler():
         depth_frame = events.get("depth_frame")
         if not depth_frame:
             return
-        self.frame_size = depth_frame.img.shape[:-1][::-1]
+        self.depth_frame_size = depth_frame.img.shape[:-1][::-1]
         return depth_frame.img                                                                          
 
     def get_highest_conf_gaze(self, events) -> np.array:
@@ -98,6 +98,17 @@ class EventHandler():
             return
         print(imu)
         return imu
+    
+    def get_objects(self, events) -> np.array:
+        """
+        Return the detected objects in the scene.
+        For information on the events data type contact pupillabs ...
+        """
+        objects = events.get("objects")
+        if not objects:
+            print("No objects data available.")
+            return
+        return objects
 
     #    ____  _        _               ___        __                                                                          
     #   / ___|| |_ __ _| |_ _   _ ___  |_ _|_ __  / _| ___                                                                     

@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 10:48:51 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/17 14:17:51 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/11/20 15:29:46 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -33,6 +33,7 @@ from event_handler.event_handler import EventHandler
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image, Imu, CameraInfo
+from yolo_ros2.msg import Detections, Detection
 from pupil_labs_ros2_msgs.msg import GazeStamped
 from cv_bridge import CvBridge
 
@@ -74,11 +75,12 @@ class ROS_Publisher_Pugin(Plugin):
         self.ros_node = PupilRosNode(self.node_name)
 
         # settings
+        # TODO: use config file for settings
         self.publish_frame_bool = True
         self.publish_depth_frame_bool = True
         self.publish_gaze_bool = True
         self.publish_imu_bool = False
-        self.publish_objects_bool = False
+        self.publish_objects_bool = True
 
     #    ____  _             _         _____                 _   _                 
     #   |  _ \| |_   _  __ _(_)_ __   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
@@ -204,6 +206,11 @@ class ROS_Publisher_Pugin(Plugin):
             # get the imu data from the events
             # imu = self.event_handler.get_imu(events)
             # self.publish_imu(imu)
+
+        if self.publish_objects_bool:
+            # get the object data from the events
+            objects = self.event_handler.get_objects(events)
+            self.publish_objects(objects)
         
     
     def cleanup(self) -> None:
@@ -262,6 +269,35 @@ class ROS_Publisher_Pugin(Plugin):
         #   publish the frame
         self.ros_node.pub.gaze.publish(gaze_msg)
 
+    def publish_objects(self, objects) -> None:
+        """
+        Publish the gaze data to the ROS2 topic.
+        """
+        # check if object data is available
+        if not objects:
+            print("No object data available.")
+            return
+        #   convert the objects to a custom ROS2 message
+        obj_msg = Detections()
+        obj_msg.header.stamp = self.ros_node.get_clock().now().to_msg()
+        obj_msg.header.frame_id = 'object_detection'
+        # iterate over object events
+        for obj in objects:
+            detection = Detection() 
+            detection.prediction = obj['cls']
+            detection.confidence = float(obj['conf'])
+            detection.bbox.top_left.x = float(obj['xyxy'][0])
+            detection.bbox.top_left.y = float(obj['xyxy'][1])
+            detection.bbox.bottom_right.x = float(obj['xyxy'][2])
+            detection.bbox.bottom_right.y = float(obj['xyxy'][3])
+            # fit together with final message
+            obj_msg.detections.append(detection)
+        # TODO: add the object data to the message
+        # obj_msg.detections = objects
+        # print(objects)
+        #   publish the message
+        self.ros_node.pub.objects.publish(obj_msg)
+
     def restart_ros_node(self, node_name) -> None:
         """
         Restart the ROS2 Node with the new name.
@@ -313,12 +349,15 @@ class PupilRosNode(Node):
         self.pub.gaze = self.create_publisher(GazeStamped, self.node_name + '/gaze', 10)
         #   publisher for the imu data
         self.pub.imu = self.create_publisher(Imu, self.node_name + '/imu', 10)
+        #   publisher for the detected objects
+        self.pub.objects = self.create_publisher(Detections, self.node_name + '/objects', 10)
 
 class RosPublishers():
     def __init__(self): 
         self.frame      = RosCameraPublisher()
         self.gaze       = None
         self.imu        = None
+        self.objects    = None
 
 class RosCameraPublisher():
     def __init__(self):

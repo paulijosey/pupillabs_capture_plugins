@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/09/24 11:52:09 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/10/09 09:54:29 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/11/20 13:49:34 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -65,7 +65,7 @@ class Object_Detection(Plugin):
         """
         # order (0-1) determines if your plugin should run before other plugins or after
         # gcvlc player uses high order since it relies on calculated gaze points
-        self.order = .7
+        self.order = .4
     
     def init_object_detection(self, yolo_version="yolo11n") -> None:
         """
@@ -75,6 +75,7 @@ class Object_Detection(Plugin):
         self.yolo_path = pathlib.Path(__file__).parent / "object_detection_models" / self.yolo_version
         self.model = YOLO(self.yolo_path)  # pretrained YOLO model
         self.recent_objects = None
+        self.object_events = None
 
     #    ____  _             _         _____                 _   _                 
     #   |  _ \| |_   _  __ _(_)_ __   |  ___|   _ _ __   ___| |_(_) ___  _ __  ___ 
@@ -163,10 +164,9 @@ class Object_Detection(Plugin):
         frame = self.event_handler.get_frame(events)
         self.object_detection(frame)
 
-        # TODO: use gaze data
-        gaze = self.event_handler.get_highest_conf_gaze(events)
+        # append events with detected objects
+        events = self.convert_obj_to_events(events)
 
- 
     def gl_display(self):
         """
         Overlay information on the image displayed in the GUI.
@@ -193,9 +193,43 @@ class Object_Detection(Plugin):
         TODO: return the detected objects and their coordinates in a appropriate format
         """
         # Run batched inference on a list of images
-        self.recent_objects = self.model(image, verbose=False, stream=True)  # return a list of Results objects
+        self.recent_objects = self.model.predict(image, verbose=False, stream=True)  # return a list of Results objects
+        # self.recent_objects = self.model(image, verbose=False)  # return a list of Results objects
         # sent as events to the plugin manager
     
+    def convert_obj_to_events(self, events) -> any:
+        """
+        Convert the detected objects into events and append them to the event list.
+        """
+
+        # TODO: fix this! 
+        if self.recent_objects is not None:
+            # Process results list
+            # ... first convert to numpy array
+            for obj in self.recent_objects:
+                boxes = obj.boxes.numpy()  # Boxes object for bounding box outputs
+                masks = obj.masks  # Masks object for segmentation outputs
+                pobs  = obj.probs  # Probs object for class probabilities
+                cls_dict = obj.names
+                events["objects"] = []
+                # create an evenly spread color spectrum acording to the classes in cls_dict
+                color_palette = sns.color_palette(None, len(cls_dict))           
+                # iterate through the bounding boxes and display them with distinct colors 
+                # for each class
+                for box in boxes:
+                    object_event = {
+                        "topic": "/object_detection", 
+                        "xyxy": box.xyxy[0].tolist(),
+                        "xywh": box.xywh[0].tolist(),
+                        "color": color_palette[int(box.cls[0].item())],
+                        "cls": str(cls_dict[box.cls[0].item()]),
+                        "conf": box.conf.item(),
+                        }
+                    events["objects"].append(object_event)
+                # save for in class usage
+                self.object_events = events["objects"]
+        return events
+
     #     ____          _                   __     ___                 _ _          _   _             
     #    / ___|   _ ___| |_ ___  _ __ ___   \ \   / (_)___ _   _  __ _| (_)______ _| |_(_) ___  _ __  
     #   | |  | | | / __| __/ _ \| '_ ` _ \   \ \ / /| / __| | | |/ _` | | |_  / _` | __| |/ _ \| '_ \ 
@@ -209,20 +243,13 @@ class Object_Detection(Plugin):
 
         This function should be called in pupillabs "gl_display" method.
         """
-        if self.recent_objects is not None:
+        if self.object_events is not None:
             # Process results list
-            for obj in self.recent_objects:
-                boxes = obj.boxes  # Boxes object for bounding box outputs
-                cls_dict = obj.names
-                # create an evenly spread color spectrum acording to the classes in cls_dict
-                color_palette = sns.color_palette(None, len(cls_dict))           
-                # iterate through the bounding boxes and display them with distinct colors 
-                # for each class
-                for box in boxes:
-                    # draw bounding box
-                    wh = [box.xywh[0][2], box.xywh[0][3]]
-                    top_left = [box.xywh[0][0] - wh[0]/2 , box.xywh[0][1] - wh[1]/2]
-                    color = color_palette[int(box.cls[0].item())]
-                    draw_rounded_rect(top_left, wh, 2.0, RGBA(color[0], color[1], color[2], 0.5))
-                    # draw object label
-                    self.glfont.draw_text(top_left[0], top_left[1], str(cls_dict[box.cls[0].item()]) + " (" + str(box.conf[0].item()) + ")" )
+            for obj in self.object_events:
+                # draw bounding box
+                wh = obj['xywh'][2:]
+                top_left = obj['xyxy'][:2]
+                color = obj['color']
+                draw_rounded_rect(top_left, wh, 2.0, RGBA(color[0], color[1], color[2], 0.5))
+                # draw object label
+                self.glfont.draw_text(top_left[0], top_left[1], obj['cls'] + " (" + str(obj['conf']) + ")" )
