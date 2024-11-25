@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/09/24 11:52:09 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/11/20 13:49:34 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/11/25 08:51:31 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -67,7 +67,7 @@ class Object_Detection(Plugin):
         # gcvlc player uses high order since it relies on calculated gaze points
         self.order = .4
     
-    def init_object_detection(self, yolo_version="yolo11n") -> None:
+    def init_object_detection(self, yolo_version="tinyissimo.pt") -> None:
         """
         Initialize the object detection model.
         """
@@ -162,8 +162,11 @@ class Object_Detection(Plugin):
 
         # get the frame(aka world camera data) from the events
         frame = self.event_handler.get_frame(events)
-        self.object_detection(frame)
+        # check if the frame is not None
+        if frame is None:
+            return
 
+        self.object_detection(frame)
         # append events with detected objects
         events = self.convert_obj_to_events(events)
 

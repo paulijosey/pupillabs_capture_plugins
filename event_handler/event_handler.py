@@ -6,7 +6,7 @@
 #    By: Paul Joseph <paul.joseph@pbl.ee.ethz.ch    +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2024/10/03 11:01:55 by Paul Joseph       #+#    #+#              #
-#    Updated: 2024/11/19 10:46:33 by Paul Joseph      ###   ########.fr        #
+#    Updated: 2024/11/21 13:30:02 by Paul Joseph      ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -38,7 +38,7 @@ class EventHandler():
         """
         frame = events.get("frame")
         if not frame:
-            return
+            return None
         self.frame_size = frame.img.shape[:-1][::-1]
         return frame.img                                                                          
 
